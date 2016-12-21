@@ -4,6 +4,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.GZIPOutputStream;
 
 import static spark.Spark.get;
 import static spark.Spark.halt;
@@ -17,12 +18,13 @@ public class RestController {
         get("/data/:filename", (request, response) -> {
             final String filename = request.params(":filename") + ".csv";
             try (Reader in = reader(filename);
-                 PrintWriter out = response.raw().getWriter()) {
+                 PrintWriter out = new PrintWriter(new GZIPOutputStream(response.raw().getOutputStream()))) {
                 final CsvStreamer streamer = new CsvStreamer(in, request.queryMap().toMap());
                 response.status(200);
                 response.type("text/csv");
                 response.header("Content-Encoding", "gzip");
                 response.header("Content-Disposition", "attachment; filename=" + filename);
+
                 out.print(streamer.getHeader());
                 streamer.lines().forEach(out::print);
             } catch (Exception e) {
